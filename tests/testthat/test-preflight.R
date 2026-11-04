@@ -4,7 +4,7 @@ test_that("runMappingPreflight reports aggregate mapping shares", {
   on.exit(DBI::dbDisconnect(connection, shutdown = TRUE))
   omop <- exportCdmToParquet(
     connection = connection, cdmDatabaseSchema = "cdm", outputFolder = withr::local_tempdir(),
-    tables = c("measurement", "condition_occurrence", "vocabulary")
+    tables = c("measurement", "condition_occurrence", "concept", "vocabulary")
   )
 
   preflight <- runMappingPreflight(omop)
@@ -15,10 +15,12 @@ test_that("runMappingPreflight reports aggregate mapping shares", {
   measurement <- preflight$tables[preflight$tables$table == "measurement", ]
   expect_equal(measurement$rows, 4)
   expect_equal(measurement$unmappedShare, 1 / 4)
+  expect_equal(measurement$notInVocabularyShare, 1 / 3)
   expect_equal(measurement$midnightShare, 2 / 4)
   expect_equal(measurement$missingUnitShare, 1 / 3)
   condition <- preflight$tables[preflight$tables$table == "condition_occurrence", ]
   expect_equal(condition$unmappedShare, 0)
+  expect_equal(condition$notInVocabularyShare, 1)
   expect_true(is.na(condition$missingUnitShare))
   expect_output(print(preflight), "25.0%")
 })

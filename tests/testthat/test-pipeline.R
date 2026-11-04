@@ -4,7 +4,9 @@ test_that("the pipeline chains steps through objects with a fake runner", {
   root <- withr::local_tempdir()
   omopFolder <- file.path(root, "omop")
   dir.create(omopFolder)
-  utils::write.csv(data.frame(person_id = 1), file.path(omopFolder, "person.csv"), row.names = FALSE)
+  for (table in c("person", "concept", "concept_relationship")) {
+    utils::write.csv(data.frame(id = 1), file.path(omopFolder, paste0(table, ".csv")), row.names = FALSE)
+  }
   predicates <- file.path(root, "predicates.yaml")
   writeLines("predicates: {}", predicates)
 
@@ -87,4 +89,43 @@ test_that("exportResults suppresses small counts", {
   expect_true(is.na(tables$rows[tables$table == "death"]))
   expect_equal(tables$rows[tables$table == "measurement"], 100)
   expect_equal(jsonlite::read_json(files[["metadata"]])$databaseId, "site_a")
+})
+
+test_that("runOmopToMeds gives OMOP_MEDS lower-case table names", {
+  fake <- fakeRunner()
+  withr::local_options(rmeds.runner = fake$runner)
+  root <- withr::local_tempdir()
+  omopFolder <- file.path(root, "omop")
+  dir.create(omopFolder)
+  for (file in c("PERSON.csv", "2b_concept.csv", "Concept_Relationship.CSV")) {
+    utils::write.csv(data.frame(id = 1), file.path(omopFolder, file), row.names = FALSE)
+  }
+
+  runOmopToMeds(omopFolder, file.path(root, "meds"))
+
+  input <- hydraValue(fake$calls()[[1]]$args, "raw_input_dir")
+  expect_equal(basename(input), "omop_input")
+  expect_setequal(list.files(input), c("person.csv", "concept.csv", "concept_relationship.csv"))
+  expect_equal(nrow(utils::read.csv(file.path(input, "concept.csv"))), 1)
+})
+
+test_that("runOmopToMeds stops early without the vocabulary tables", {
+  withr::local_options(rmeds.runner = function(...) stop("runner should not be called"))
+  omopFolder <- withr::local_tempdir()
+  utils::write.csv(data.frame(id = 1), file.path(omopFolder, "person.csv"), row.names = FALSE)
+
+  expect_error(runOmopToMeds(omopFolder, withr::local_tempdir()), "concept_relationship")
+})
+
+test_that("readEvaluation reads NaN metrics as NA", {
+  root <- withr::local_tempdir()
+  writeLines(c(
+    '{"samples_equally_weighted": {"roc_auc_score": NaN, "brier_score_loss": 0.25,',
+    '  "note": "NaN in a string stays text", "max": Infinity, "values": [NaN, -Infinity]}}'
+  ), file.path(root, "results.json"))
+
+  evaluation <- readEvaluation(root)
+
+  expect_equal(evaluation$metric, c("samples_equally_weighted/roc_auc_score", "samples_equally_weighted/brier_score_loss", "samples_equally_weighted/max"))
+  expect_equal(evaluation$value, c(NA, 0.25, Inf))
 })

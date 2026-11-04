@@ -20,5 +20,7 @@ An \code{omopSource} object.
 \description{
 Wraps a folder with one entry per CDM table: \code{person.csv},
 \code{person.csv.gz}, \code{person.parquet}, or a \verb{person/} folder of shards. This
-is the layout \code{OMOP_MEDS} reads.
+is the layout \code{OMOP_MEDS} reads. File names are matched without regard to
+case (\code{PERSON.csv} is the \code{person} table), and the \verb{2b_} prefix of the
+PhysioNet MIMIC-IV OMOP demo's vocabulary files is dropped.
 }

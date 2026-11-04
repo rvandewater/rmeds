@@ -7,8 +7,9 @@ objects and shareable aggregate results out.
 
 > Status: initial prototype (0.0.0.9000). The full pipeline has run end to end
 > against the real tools (OMOP_MEDS 0.4.0, MEDS-DEV 0.1.0, Python 3.12, macOS)
-> on a small synthetic CDM, with `random_predictor` as the model. It has not yet
-> been run on a real OMOP database, on Windows, or with the trained models.
+> on a synthetic CDM and on the public MIMIC-IV OMOP demo (100 patients), with
+> `random_predictor` and the trained `meds_tab/tiny`. It has not yet been run on
+> a full-size OMOP database or on Windows.
 
 ## Quick start
 
@@ -45,6 +46,29 @@ exportResults(results, preflight, outputFolder = "work/share",
 Any DBI connection works too (`exportCdmToParquet(connection = con, ...)`), and
 every step also accepts a path instead of the previous step's object, so you can
 start from an existing CSV/Parquet dump or MEDS dataset.
+
+## Try it on public data
+
+```r
+demo("mimic-iv-omop", package = "rmeds")
+```
+
+This downloads the PhysioNet
+[MIMIC-IV demo in OMOP](https://physionet.org/content/mimic-iv-demo-omop/0.9/)
+(open access, ~11 MB), converts it to MEDS, labels the MEDS-DEV task
+`abnormal_lab/blood_chemistry/hyponatremia/first_24h` with the predicates in
+`inst/predicates/mimic-iv-omop-demo.yaml`, and runs and evaluates
+`random_predictor` (about 20 seconds once the Python environment exists). Two
+things to expect:
+
+* The demo ships only MIMIC's own source concepts, not the standard OMOP
+  vocabularies, so `runMappingPreflight()` reports nearly every concept id as
+  not in the vocabulary, and the MEDS codes are MIMIC source codes or
+  `OMOP_<table>//...` placeholders rather than `LOINC//...`. A real site with a
+  full vocabulary export gets standard codes; the
+  [Eunomia](https://github.com/OHDSI/EunomiaDatasets) Synthea sets do too.
+* With 100 patients the held-out split has about 10 subjects and no positive
+  labels, so AUROC is undefined and `evaluatePredictions()` warns.
 
 ## Design
 
@@ -85,6 +109,9 @@ build a cached environment. For offline sites, pre-build an environment and set
 
 * MEDS-DEV has no OMOP dataset entry yet; pass your own ACES predicates file
   (`predicatesPath`) written in the codes your MEDS data uses.
+* OMOP_MEDS 0.4.0 does not convert `visit_detail`, where OMOP keeps ICU stays,
+  so ICU-level tasks such as `mortality/in_icu/first_24h` cannot be defined on
+  real ICU stays yet. Hospital-level tasks (the `abnormal_lab` family) work.
 * MEDS-DEV builds shell commands from paths; keep work folders free of spaces.
 * No harmonisation of codes, units or hierarchies across sites (by design for
   now); `runMappingPreflight()` only reports.

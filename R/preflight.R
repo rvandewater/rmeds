@@ -21,21 +21,27 @@ preflightColumns <- list(
 #' Report mapping quality before running the ETL
 #'
 #' For each domain table: rows, the share of rows with no standard concept
-#' (`concept_id` 0 or missing), the share of event times at exactly midnight
+#' (`concept_id` 0 or missing), the share of the remaining rows whose concept
+#' id is not in the exported `concept` table (`OMOP_MEDS` cannot turn those
+#' into `vocabulary_id//concept_code` codes and falls back to source or
+#' placeholder codes), the share of event times at exactly midnight
 #' (usually date-only source data, a leakage risk for prediction times), and
 #' for measurements the share of numeric values without a unit. Also reports
 #' the vocabulary and CDM versions when those tables were exported.
 #'
 #' @param omop An [omopSource()] or a path to one.
 #'
-#' @return A `mappingPreflight` object: a list with `tables` (a data frame),
+#' @return A `mappingPreflight` object: a list with `tables` (a data frame
+#'   with columns `table`, `rows`, `unmappedShare`, `notInVocabularyShare`,
+#'   `midnightShare` and `missingUnitShare`),
 #'   `vocabularyVersion` and `cdmVersion`.
 #' @export
 runMappingPreflight <- function(omop) {
   omop <- asOmopSource(omop)
   present <- intersect(names(preflightColumns), names(omop$tables))
+  concepts <- openOmopTable(omop, "concept")
   rows <- lapply(present, function(table) {
-    preflightTable(openOmopTable(omop, table), table, preflightColumns[[table]])
+    preflightTable(openOmopTable(omop, table), table, preflightColumns[[table]], concepts)
   })
   structure(
     list(
@@ -47,15 +53,26 @@ runMappingPreflight <- function(omop) {
   )
 }
 
-preflightTable <- function(data, table, columns) {
+preflightTable <- function(data, table, columns, concepts = NULL) {
   fields <- names(data)
   total <- countRows(data)
   share <- function(numerator, denominator) if (is.na(denominator) || denominator == 0) NA_real_ else numerator / denominator
 
   unmapped <- NA_real_
+  notInVocabulary <- NA_real_
   if (columns$concept %in% fields) {
     concept <- rlang::sym(columns$concept)
     unmapped <- share(countRows(dplyr::filter(data, is.na(!!concept) | !!concept == 0)), total)
+    if (!is.null(concepts) && "concept_id" %in% names(concepts)) {
+      notInVocabulary <- tryCatch({
+        mapped <- data |>
+          dplyr::filter(!is.na(!!concept) & !!concept != 0) |>
+          dplyr::transmute(concept_id = as.numeric(!!concept))
+        known <- dplyr::transmute(concepts, concept_id = as.numeric(.data$concept_id))
+        mappedRows <- countRows(mapped)
+        share(mappedRows - countRows(dplyr::semi_join(mapped, known, by = "concept_id")), mappedRows)
+      }, error = function(e) NA_real_)
+    }
   }
 
   midnight <- NA_real_
@@ -79,6 +96,7 @@ preflightTable <- function(data, table, columns) {
     table = table,
     rows = total,
     unmappedShare = unmapped,
+    notInVocabularyShare = notInVocabulary,
     midnightShare = midnight,
     missingUnitShare = missingUnit
   )
@@ -87,7 +105,7 @@ preflightTable <- function(data, table, columns) {
 emptyPreflightTable <- function() {
   data.frame(
     table = character(), rows = numeric(), unmappedShare = numeric(),
-    midnightShare = numeric(), missingUnitShare = numeric()
+    notInVocabularyShare = numeric(), midnightShare = numeric(), missingUnitShare = numeric()
   )
 }
 
@@ -111,7 +129,7 @@ lookupValue <- function(omop, table, keyColumn, key, valueColumn) {
 print.mappingPreflight <- function(x, ...) {
   cli::cli_text("{.cls mappingPreflight}: vocabulary {.val {x$vocabularyVersion}}, CDM {.val {x$cdmVersion}}")
   shown <- x$tables
-  for (column in c("unmappedShare", "midnightShare", "missingUnitShare")) {
+  for (column in c("unmappedShare", "notInVocabularyShare", "midnightShare", "missingUnitShare")) {
     shown[[column]] <- ifelse(is.na(shown[[column]]), "-", sprintf("%.1f%%", 100 * shown[[column]]))
   }
   print(shown, row.names = FALSE)

@@ -1,0 +1,48 @@
+# ACES predicates for the PhysioNet MIMIC-IV OMOP demo (v0.9) after OMOP_MEDS
+# 0.4.0. The demo ships only MIMIC's own source concepts, so codes are source
+# codes (mimiciv_*) or OMOP_MEDS placeholders for unresolved standard concepts.
+predicates:
+  hospital_admission:
+    code: { regex: '^mimiciv_vis_admission_type//(EW EMER\.|DIRECT EMER\.|URGENT|ELECTIVE|OBSERVATION ADMIT|EU OBSERVATION|DIRECT OBSERVATION|SURGICAL SAME DAY ADMISSION)//start$' }
+  hospital_discharge:
+    code: { regex: '^mimiciv_vis_admission_type//(EW EMER\.|DIRECT EMER\.|URGENT|ELECTIVE|OBSERVATION ADMIT|EU OBSERVATION|DIRECT OBSERVATION|SURGICAL SAME DAY ADMISSION)//end$' }
+
+  sodium_lab:
+    code: "OMOP_measurement//measurement_concept_id:3019550,3019550"
+  sodium_chart:
+    code: "mimiciv_meas_chart//220645"
+  sodium_blood_gas:
+    code: "mimiciv_meas_lab_loinc//50824"
+  low_sodium_lab:
+    code: "OMOP_measurement//measurement_concept_id:3019550,3019550"
+    value_max: 135
+    value_max_inclusive: False
+  low_sodium_chart:
+    code: "mimiciv_meas_chart//220645"
+    value_max: 135
+    value_max_inclusive: False
+  low_sodium_blood_gas:
+    code: "mimiciv_meas_lab_loinc//50824"
+    value_max: 135
+    value_max_inclusive: False
+  sodium:
+    expr: or(sodium_lab, sodium_chart, sodium_blood_gas)
+  abnormally_low_sodium:
+    expr: or(low_sodium_lab, low_sodium_chart, low_sodium_blood_gas)
+
+  creatinine_lab:
+    code: "OMOP_measurement//measurement_concept_id:3016723,3016723"
+  creatinine_chart:
+    code: "mimiciv_meas_chart//220615"
+  high_creatinine_lab:
+    code: "OMOP_measurement//measurement_concept_id:3016723,3016723"
+    value_min: 1.3
+    value_min_inclusive: False
+  high_creatinine_chart:
+    code: "mimiciv_meas_chart//220615"
+    value_min: 1.3
+    value_min_inclusive: False
+  creatinine:
+    expr: or(creatinine_lab, creatinine_chart)
+  abnormally_high_creatinine:
+    expr: or(high_creatinine_lab, high_creatinine_chart)

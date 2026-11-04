@@ -13,7 +13,7 @@ omopReferenceTables <- c(
 #'
 #' The clinical tables `OMOP_MEDS` turns into events, plus `concept` and
 #' `concept_relationship` (both required by `OMOP_MEDS`, which builds codes
-#' from concept names) and `vocabulary` / `cdm_source` (used by
+#' as `vocabulary_id//concept_code`) and `vocabulary` / `cdm_source` (used by
 #' [runMappingPreflight()]).
 #'
 #' @return A character vector of table names.
@@ -32,7 +32,9 @@ defaultCdmTables <- function() {
 #'
 #' Wraps a folder with one entry per CDM table: `person.csv`,
 #' `person.csv.gz`, `person.parquet`, or a `person/` folder of shards. This
-#' is the layout `OMOP_MEDS` reads.
+#' is the layout `OMOP_MEDS` reads. File names are matched without regard to
+#' case (`PERSON.csv` is the `person` table), and the `2b_` prefix of the
+#' PhysioNet MIMIC-IV OMOP demo's vocabulary files is dropped.
 #'
 #' @param path The folder.
 #'
@@ -45,10 +47,42 @@ omopSource <- function(path) {
   keep <- dir.exists(entries) | grepl(omopFileExtension, entries, ignore.case = TRUE)
   entries <- entries[keep]
   tables <- tolower(sub(omopFileExtension, "", basename(entries), ignore.case = TRUE))
+  demoPrefixed <- startsWith(tables, "2b_") & !sub("^2b_", "", tables) %in% tables
+  tables[demoPrefixed] <- sub("^2b_", "", tables[demoPrefixed])
   structure(
     list(path = path, tables = stats::setNames(as.list(entries), tables)),
     class = "omopSource"
   )
+}
+
+# OMOP_MEDS finds tables by exact lower-case name (`concept.csv`,
+# `measurement/`). When a source's files are named otherwise (`CONCEPT.csv`,
+# `2b_concept.csv`), this returns a folder of links with the expected names,
+# or copies where links cannot be made. Otherwise it returns the source path.
+omopToolInput <- function(omop, folder) {
+  entries <- unlist(omop$tables, use.names = FALSE)
+  extension <- ifelse(
+    dir.exists(entries),
+    "",
+    tolower(regmatches(basename(entries), regexpr(omopFileExtension, basename(entries), ignore.case = TRUE)))
+  )
+  expected <- paste0(names(omop$tables), extension)
+  if (all(basename(entries) == expected)) {
+    return(omop$path)
+  }
+  unlink(folder, recursive = TRUE)
+  dir.create(folder, recursive = TRUE)
+  targets <- file.path(folder, expected)
+  linked <- suppressWarnings(file.symlink(entries, targets))
+  for (i in which(!linked)) {
+    if (dir.exists(entries[i])) {
+      file.copy(entries[i], folder, recursive = TRUE)
+      file.rename(file.path(folder, basename(entries[i])), targets[i])
+    } else {
+      file.copy(entries[i], targets[i])
+    }
+  }
+  normalizePath(folder, winslash = "/")
 }
 
 #' @rdname omopSource
@@ -83,7 +117,45 @@ openOmopTable <- function(omop, table) {
   } else {
     grepl("\\.parquet$", entry, ignore.case = TRUE)
   }
-  arrow::open_dataset(entry, format = if (isParquet) "parquet" else "csv")
+  if (isParquet) {
+    return(arrow::open_dataset(entry, format = "parquet"))
+  }
+  openOmopCsv(entry)
+}
+
+# Arrow infers CSV column types from the first block of rows only, so an
+# optional column that is empty there, a source value that starts out
+# numeric, or a value that starts out whole fails further down. OMOP CSVs are
+# therefore read with types from the CDM's naming conventions: text columns
+# as text, value columns as doubles, and id and date columns as inferred
+# unless the inference saw no values.
+openOmopCsv <- function(entry) {
+  inferred <- arrow::open_dataset(entry, format = "csv")$schema$fields
+  fields <- lapply(inferred, function(field) arrow::field(field$name, omopColumnType(field$name, field$type)))
+  arrow::open_dataset(entry, format = "csv", schema = do.call(arrow::schema, fields), skip = 1)
+}
+
+# CDM columns named *_id that hold text (CDM 5.3 and 5.4).
+omopTextIds <- "(vocabulary|domain|concept_class|relationship|_source)_id$|^(unique_device|production)_id$"
+omopNumberColumns <- c(
+  "value_as_number", "range_low", "range_high", "quantity", "dose_value", "refills",
+  "days_supply", "amount_value", "numerator_value", "denominator_value"
+)
+
+omopColumnType <- function(column, inferred = arrow::null()) {
+  column <- tolower(column)
+  unseen <- inferred$ToString() == "null"
+  if (grepl("_(datetime|date)$", column)) {
+    if (!unseen) inferred else if (grepl("_datetime$", column)) arrow::timestamp("us") else arrow::date32()
+  } else if (grepl(omopTextIds, column)) {
+    arrow::utf8()
+  } else if (grepl("_id$|^(year|month|day)_of_birth$", column)) {
+    if (unseen) arrow::int64() else inferred
+  } else if (column %in% omopNumberColumns) {
+    arrow::float64()
+  } else {
+    arrow::utf8()
+  }
 }
 
 #' Export CDM tables from a database to Parquet
