@@ -2,7 +2,7 @@
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![R-CMD-check](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml/badge.svg?branch=main&event=push)](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 <!-- badges: end -->
 
@@ -247,7 +247,9 @@ devtools::test()     # synthetic data and a fake tool runner, no Python needed
 
 Set `RMEDS_INTEGRATION=true` to also run the end-to-end test against the real
 Python tools (downloads the pinned packages on first use). GitHub Actions runs
-`R CMD check` on Linux, macOS and Windows for every pull request.
+`R CMD check` on Linux and Windows for every pull request and push to main,
+and on macOS too every Monday and on demand (Actions > R-CMD-check > Run
+workflow), because hosted macOS runners are often unavailable at busy times.
 
 ## License
 
