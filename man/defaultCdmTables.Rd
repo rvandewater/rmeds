@@ -12,6 +12,6 @@ A character vector of table names.
 \description{
 The clinical tables \code{OMOP_MEDS} turns into events, plus \code{concept} and
 \code{concept_relationship} (both required by \code{OMOP_MEDS}, which builds codes
-from concept names) and \code{vocabulary} / \code{cdm_source} (used by
+as \verb{vocabulary_id//concept_code}) and \code{vocabulary} / \code{cdm_source} (used by
 \code{\link[=runMappingPreflight]{runMappingPreflight()}}).
 }

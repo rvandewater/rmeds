@@ -10,12 +10,17 @@ runMappingPreflight(omop)
 \item{omop}{An \code{\link[=omopSource]{omopSource()}} or a path to one.}
 }
 \value{
-A \code{mappingPreflight} object: a list with \code{tables} (a data frame),
+A \code{mappingPreflight} object: a list with \code{tables} (a data frame
+with columns \code{table}, \code{rows}, \code{unmappedShare}, \code{notInVocabularyShare},
+\code{midnightShare} and \code{missingUnitShare}),
 \code{vocabularyVersion} and \code{cdmVersion}.
 }
 \description{
 For each domain table: rows, the share of rows with no standard concept
-(\code{concept_id} 0 or missing), the share of event times at exactly midnight
+(\code{concept_id} 0 or missing), the share of the remaining rows whose concept
+id is not in the exported \code{concept} table (\code{OMOP_MEDS} cannot turn those
+into \verb{vocabulary_id//concept_code} codes and falls back to source or
+placeholder codes), the share of event times at exactly midnight
 (usually date-only source data, a leakage risk for prediction times), and
 for measurements the share of numeric values without a unit. Also reports
 the vocabulary and CDM versions when those tables were exported.

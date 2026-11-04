@@ -29,10 +29,14 @@ runOmopToMeds <- function(omop,
                           overwrite = FALSE,
                           extraOverrides = list()) {
   omop <- asOmopSource(omop)
+  missing <- setdiff(c("person", "concept", "concept_relationship"), names(omop$tables))
+  if (length(missing) > 0) {
+    cli::cli_abort("OMOP_MEDS needs the {.val {missing}} table{?s}, which {.file {omop$path}} does not have.")
+  }
   outputFolder <- prepareOutputFolder(outputFolder, overwrite)
   args <- c(
     hydraOverrides(
-      raw_input_dir = omop$path,
+      raw_input_dir = omopToolInput(omop, file.path(outputFolder, ".rmeds", "omop_input")),
       root_output_dir = outputFolder,
       prefer_source = !standardConceptsOnly,
       join_on_visit = joinOnVisit,

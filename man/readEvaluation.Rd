@@ -13,6 +13,8 @@ readEvaluation(path)
 \value{
 A \code{medsEvaluation} data frame of numeric metrics, with nested JSON
 keys joined by \code{/} (e.g. \code{samples_equally_weighted/roc_auc_score}).
+Metrics MEDS-Evaluation could not compute (written as \code{NaN}, e.g. AUROC
+when the evaluated labels hold only one class) are \code{NA}.
 }
 \description{
 Read MEDS-Evaluation results

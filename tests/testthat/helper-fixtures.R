@@ -28,6 +28,9 @@ syntheticCdm <- function() {
     condition_concept_id = c(201826L, 201826L),
     condition_start_datetime = at(c("2019-05-01 10:00:00", "2019-06-01 11:00:00"))
   ))
+  write("cdm", "concept", data.frame(
+    concept_id = 3016723L, vocabulary_id = "LOINC", concept_code = "2160-0", standard_concept = "S"
+  ))
   write("cdm", "vocabulary", data.frame(
     vocabulary_id = c("None", "SNOMED"),
     vocabulary_version = c("v5.0 31-AUG-24", "2024-03-01")

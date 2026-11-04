@@ -27,7 +27,15 @@ evaluatePredictions <- function(x, outputFolder = NULL) {
     args = c(do.call(hydraOverrides, predictionsArg), hydraOverrides(output_dir = outputFolder)),
     logFile = file.path(outputFolder, ".rmeds", "meds-dev-evaluation.log")
   )
-  readEvaluation(outputFolder)
+  evaluation <- readEvaluation(outputFolder)
+  undefined <- evaluation$metric[is.na(evaluation$value)]
+  if (length(undefined) > 0) {
+    cli::cli_warn(c(
+      "MEDS-Evaluation could not compute {.val {undefined}}.",
+      i = "This usually means the evaluated labels hold only one class, common with few held-out subjects."
+    ))
+  }
+  evaluation
 }
 
 # MEDS-Evaluation takes either one file/glob (predictions_path) or a folder
@@ -60,6 +68,8 @@ predictionsArgument <- function(x) {
 #'
 #' @return A `medsEvaluation` data frame of numeric metrics, with nested JSON
 #'   keys joined by `/` (e.g. `samples_equally_weighted/roc_auc_score`).
+#'   Metrics MEDS-Evaluation could not compute (written as `NaN`, e.g. AUROC
+#'   when the evaluated labels hold only one class) are `NA`.
 #' @export
 readEvaluation <- function(path) {
   path <- existingFolder(path, "Evaluation")
@@ -67,12 +77,19 @@ readEvaluation <- function(path) {
   if (length(files) == 0) {
     cli::cli_abort("No evaluation JSON in {.file {path}}.")
   }
-  metrics <- flattenMetrics(jsonlite::read_json(files[[1]]))
+  metrics <- flattenMetrics(jsonlite::parse_json(readNonStandardJson(files[[1]])))
   structure(
     data.frame(metric = names(metrics), value = unlist(metrics, use.names = FALSE)),
     class = c("medsEvaluation", "data.frame"),
     source = files[[1]]
   )
+}
+
+# Python's json module writes NaN and Infinity, which are not JSON. Turn the
+# bare tokens (never ones inside strings) into strings flattenMetrics knows.
+readNonStandardJson <- function(file) {
+  text <- paste(readLines(file, warn = FALSE), collapse = "\n")
+  gsub("(?<=[:\\[,]|[:\\[,]\\s)\\s*(-?Infinity|NaN)(?=\\s*[,\\]}])", " \"\\1\"", text, perl = TRUE)
 }
 
 flattenMetrics <- function(x, prefix = NULL) {
@@ -84,6 +101,8 @@ flattenMetrics <- function(x, prefix = NULL) {
       metrics <- c(metrics, flattenMetrics(value, key))
     } else if (is.numeric(value) && length(value) == 1) {
       metrics[[key]] <- as.numeric(value)
+    } else if (is.character(value) && length(value) == 1 && value %in% c("NaN", "Infinity", "-Infinity")) {
+      metrics[[key]] <- c("NaN" = NA_real_, "Infinity" = Inf, "-Infinity" = -Inf)[[value]]
     }
   }
   metrics
