@@ -14,3 +14,4 @@
 
 * The README follows the usual R package layout: badges, installation, getting started, related work, getting help, and a code of conduct. The repository now includes the Apache 2.0 `LICENSE` text.
 * `notebooks/mimic-iv-omop-demo.ipynb` walks through the MIMIC-IV OMOP demo step by step in Jupyter (R kernel), with saved aggregate outputs.
+* The README shows how to run the notebook with Jupyter from uv, and how to point rmeds at a Python environment built with uv.

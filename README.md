@@ -47,8 +47,21 @@ setupPythonEnvironment()   # build the environment now rather than on first use
 pythonEnvironmentInfo()    # the Python and tool versions in use
 ```
 
-For offline sites, pre-build an environment and set
-`options(rmeds.python = "/path/to/env/bin/python")`, or set `UV_OFFLINE=1`.
+To manage the environment yourself, for example to pre-build one for a site
+without internet access, create it with uv and point rmeds at it:
+
+```bash
+uv venv ~/.venvs/rmeds --python 3.12
+uv pip install --python ~/.venvs/rmeds OMOP_MEDS==0.4.0 MEDS-DEV==0.1.0
+```
+
+```r
+options(rmeds.python = path.expand("~/.venvs/rmeds/bin/python"))
+setupPythonEnvironment()   # checks that the environment has every tool rmeds runs
+```
+
+To keep reticulate's own environment but resolve it from the uv cache only,
+set `UV_OFFLINE=1`.
 
 ## Getting started
 
@@ -121,6 +134,28 @@ same pipeline one cell at a time, with explanations and aggregate outputs
 only: the OMOP tables, the pre-flight report, the MEDS code vocabularies, the
 labels per split, the metrics, and optionally a trained `meds_tab/tiny` model.
 The saved outputs show what to expect before you run anything.
+
+Jupyter itself does not need installing; [uv](https://docs.astral.sh/uv/)
+can run it on demand. Install and register the R kernel once:
+
+```r
+install.packages("IRkernel")
+```
+
+```bash
+uv run --no-project --with jupyter-client -- Rscript -e 'IRkernel::installspec()'
+```
+
+Then, from the repository folder, open the notebook in JupyterLab, or run all
+of it without a browser and save the outputs in the file:
+
+```bash
+uvx --from jupyterlab jupyter-lab notebooks/mimic-iv-omop-demo.ipynb
+uvx --from nbconvert jupyter-nbconvert --to notebook --execute --inplace notebooks/mimic-iv-omop-demo.ipynb
+```
+
+Set `RMEDS_DEMO_DIR` to a folder without spaces to keep the downloaded data
+between runs.
 
 Two things to expect:
 
