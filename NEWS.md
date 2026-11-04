@@ -9,3 +9,8 @@
 * CSV tables are read with types from the CDM naming conventions instead of Arrow's first-block inference, which failed on columns that start empty or start numeric.
 * `omopSource()` drops the MIMIC demo's `2b_` file prefix, and `runOmopToMeds()` gives OMOP_MEDS lower-case table names (it failed on Eunomia's `CONCEPT.csv`) and stops early if `person`, `concept` or `concept_relationship` is missing.
 * `readEvaluation()` reads the `NaN` metrics MEDS-Evaluation writes (e.g. AUROC with one class) as `NA`, and `evaluatePredictions()` warns about them.
+
+## Documentation
+
+* The README follows the usual R package layout: badges, installation, getting started, related work, getting help, and a code of conduct. The repository now includes the Apache 2.0 `LICENSE` text.
+* `notebooks/mimic-iv-omop-demo.ipynb` walks through the MIMIC-IV OMOP demo step by step in Jupyter (R kernel), with saved aggregate outputs.
