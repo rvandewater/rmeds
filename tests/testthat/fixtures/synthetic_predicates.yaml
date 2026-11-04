@@ -1,0 +1,5 @@
+predicates:
+  icu_admission:
+    code: "Visit//IP//start"
+  icu_discharge:
+    code: "Visit//IP//end"
