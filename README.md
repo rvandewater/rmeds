@@ -1,4 +1,4 @@
-# rmeds
+# rMEDS
 
 Run the OMOP-to-MEDS ETL ([OMOP_MEDS](https://github.com/rvandewater/OMOP_MEDS)) and
 [MEDS-DEV](https://github.com/mmcdermott/MEDS-DEV) benchmarks on your own OMOP CDM
