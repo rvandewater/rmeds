@@ -5,6 +5,8 @@
 [![R-CMD-check](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml/badge.svg?branch=main&event=push)](https://github.com/rvandewater/rmeds/actions/workflows/R-CMD-check.yaml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 <!-- badges: end -->
+> [!WARNING]
+> This package is in very early development.
 
 ## Overview
 
